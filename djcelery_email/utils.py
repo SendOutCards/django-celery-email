@@ -55,10 +55,9 @@ def email_to_dict(message):
             filename = attachment.get_filename('')
             binary_contents = attachment.get_payload(decode=True)
             mimetype = attachment.get_content_type()
-        else:
-            filename, binary_contents, mimetype = attachment
-        contents = base64.b64encode(binary_contents).decode('ascii')
-        message_dict['attachments'].append((filename, contents, mimetype))
+            contents = base64.b64encode(binary_contents).decode('ascii')
+            attachment = (filename, contents, mimetype)
+        message_dict['attachments'].append(attachment)
 
     if settings.CELERY_EMAIL_MESSAGE_EXTRA_ATTRIBUTES:
         for attr in settings.CELERY_EMAIL_MESSAGE_EXTRA_ATTRIBUTES:
@@ -78,10 +77,13 @@ def dict_to_email(messagedict):
     attachments = messagedict.pop('attachments')
     messagedict['attachments'] = []
     for attachment in attachments:
-        filename, contents, mimetype = attachment
-        binary_contents = base64.b64decode(contents.encode('ascii'))
-        messagedict['attachments'].append(
-            (filename, binary_contents, mimetype))
+        if isinstance(attachment, MIMEBase):
+            filename, contents, mimetype = attachment
+            binary_contents = base64.b64decode(contents.encode('ascii'))
+            messagedict['attachments'].append(
+                (filename, binary_contents, mimetype))
+        else:
+            messagedict['attachments'].append(attachment)
     if isinstance(messagedict, dict) and "content_subtype" in messagedict:
         content_subtype = messagedict["content_subtype"]
         del messagedict["content_subtype"]
